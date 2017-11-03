@@ -92,7 +92,6 @@ WaitForUser:
 	JPOS   WaitForUser ; not ready (KEYs are active-low, hence JPOS)
 	LOAD   Zero
 	OUT    XLEDS       ; clear LEDs once ready to continue
-	JUMP   Main2
 
 ;***************************************************************
 ;* Main code
@@ -109,6 +108,7 @@ Main:
 	; If you want to take manual control of the robot,
 	; execute CLI &B0010 to disable the timer interrupt.
 	
+	JUMP   Main2
 
 ; As a quick demo of the movement control, the robot is 
 ; directed to
