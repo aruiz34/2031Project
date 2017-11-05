@@ -14,39 +14,6 @@ ORG 0                  ; Jump table is located in mem 0-4
 ;***************************************************************
 ;* Initialization
 ;***************************************************************
-Main2:
-	LOADI   &B100000
-	OUT		SONAREN
-	
-Movement_Unique:
-	LOADI	0
-	STORE	DTHETA
-	LOAD	FMid        ; Defined below as 350.
-	STORE	DVel        ; Desired forward velocity
-	LOADI	609			;Alaram @2 Feet 
-	OUT		SONALARM
-	OUT		LCD			;Write distance of 609 to LCD for debugging purposes
-	IN		SONALARM	;Read alarm
-	JPOS	Rotate	
-	JUMP	Movement_Unique
-	
-	IN 		THETA
-	STORE 	ThetaOld
-Rotate:
-	LOADI  0
-	
-	STORE  DVel
-	LOADI  -90
-	STORE  DTheta
-	IN 		THETA
-	SUB		ThetaOld
-	ADDI 90
-	JPOS Rotate
-
-	LOADI  &H0810
-	OUT    BEEP        ; Short hello beep
-	
-	JUMP Die
 	
 Init:
 	; Always a good idea to make sure the robot
@@ -63,6 +30,8 @@ Init:
 	CALL   BattCheck   ; Get battery voltage (and end if too low).
 	OUT    LCD         ; Display battery voltage (hex, tenths of volts)
 
+	LOADI  &H130
+	OUT    BEEP        ; Short hello beep
 	
 WaitForSafety:
 	; This loop will wait for the user to toggle SW17.  Note that
@@ -93,6 +62,7 @@ WaitForUser:
 	LOAD   Zero
 	OUT    XLEDS       ; clear LEDs once ready to continue
 
+
 ;***************************************************************
 ;* Main code
 ;***************************************************************
@@ -108,7 +78,6 @@ Main:
 	; If you want to take manual control of the robot,
 	; execute CLI &B0010 to disable the timer interrupt.
 	
-	JUMP   Main2
 
 ; As a quick demo of the movement control, the robot is 
 ; directed to
@@ -124,6 +93,44 @@ Main:
 	; The robot should automatically start moving,
 	; trying to match these desired parameters, because
 	; the movement API is active.
+	Main2:
+	LOADI   &B100000
+	OUT		SONAREN
+	
+Movement_Unique:
+	LOAD	TWOFT			;Alaram @2 Feet 
+	OUT		SONALARM
+	OUT		LCD			;Write distance of 609 to LCD for debugging purposes
+	IN		SONALARM	;Read alarm
+	AND		SONARmask
+	JZERO	Movement_Unique
+	JUMP	Rotate
+
+
+	
+	LOADI 0
+	STORE DVeL
+
+	STORE DTheta
+Rotate:
+	LOADI 0
+	STORE DVel
+	LOADI 270
+	STORE DTheta
+
+	
+		
+Wait_:	CALL GetThetaErr
+		CALL Abs
+		OUT LCD
+		ADDI -5
+		JPOS Wait_
+
+	LOAD  ONESECBEEP
+	OUT    BEEP        ; Short hello beep
+	
+	JUMP Die
+
 	
 Test1:  ; P.S. "Test1" is a terrible, non-descriptive label
 	IN     XPOS        ; X position from odometry
@@ -769,7 +776,10 @@ I2CError:
 ;* Variables
 ;***************************************************************
 Temp:     DW 0 ; "Temp" is not a great name, but can be useful
-ThetaOld: DW 0
+ThetaOld: DW 0;
+TWOFT:	DW 609;	
+SONARmask: DW &B11111111;
+ONESECBEEP: DW &H830;
 
 ;***************************************************************
 ;* Constants
