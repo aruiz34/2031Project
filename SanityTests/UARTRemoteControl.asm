@@ -6,9 +6,9 @@
 ORG 0                  ; Jump table is located in mem 0-4
 ; This code uses the timer interrupt for the control code.
 	JUMP   Init        ; Reset vector
-	RETI               ; Sonar interrupt (unused)
+	JUMP   UARTout	   ; Sonar interrupt (unused)
 	JUMP   CTimer_ISR  ; Timer interrupt
-	RETI     ; UART interrupt (unused)
+	RETI     	   ; UART interrupt (unused)
 	RETI               ; Motor stall interrupt (unused)
 
 ;***************************************************************
@@ -29,6 +29,7 @@ Init:
 	CALL   SetupI2C    ; Configure the I2C to read the battery voltage
 	CALL   BattCheck   ; Get battery voltage (and end if too low).
 	OUT    LCD         ; Display battery voltage (hex, tenths of volts)
+	LOAD   Zero
 
 
 	
@@ -45,13 +46,42 @@ Main:
 	; configure timer interrupts to enable the movement control code
 	LOADI  10          ; fire at 10 Hz (10 ms * 10).
 	OUT    CTIMER      ; turn on timer peripheral
-	SEI &B0010      ; enable interrupts from source 2 (Timer)
+	SEI &B0110      ; enable interrupts from source 2 (Timer)
 	; at this point, timer interrupts will be firing at 10Hz, and
 	; code in that ISR will attempt to control the robot.
 	; If you want to take manual control of the robot,
 	; execute CLI &B0010 to disable the timer interrupt.
 	LOADI  &H130
 	OUT    BEEP        ; Short hello beep
+
+WaitForSafety:
+	; This loop will wait for the user to toggle SW17.  Note that
+	; SCOMP does not have direct access to SW17; it only has access
+	; to the SAFETY signal contained in XIO.
+	IN     XIO         ; XIO contains SAFETY signal
+	AND    Mask4       ; SAFETY signal is bit 4
+	JPOS   WaitForUser ; If ready, jump to wait for PB3
+	IN     TIMER       ; Use the timer value to
+	AND    Mask1       ; blink LED17 as a reminder to toggle SW17
+	SHIFT  8           ; Shift over to LED17
+	OUT    XLEDS       ; LED17 blinks at 2.5Hz (10Hz/4)
+	JUMP   WaitForSafety
+	
+WaitForUser:
+	; This loop will wait for the user to press PB3, to ensure that
+	; they have a chance to prepare for any movement in the main code.
+	IN     TIMER       ; Used to blink the LEDs above PB3
+	AND    Mask1
+	SHIFT  5           ; Both LEDG6 and LEDG7
+	STORE  Temp        ; (overkill, but looks nice)
+	SHIFT  1
+	OR     Temp
+	OUT    XLEDS
+	IN     XIO         ; XIO contains KEYs
+	AND    Mask2       ; KEY3 mask (KEY0 is reset and can't be read)
+	JPOS   WaitForUser ; not ready (KEYs are active-low, hence JPOS)
+	LOAD   Zero
+	OUT    XLEDS       ; clear LEDs once ready to continue
 	
 InfLoop:
 	;Set velocity to zero
@@ -61,9 +91,9 @@ InfLoop:
 	STORE  DVel        ; Desired forward velocity
 	
 	LOAD	Get_Letter
-	;ADDI	-1
+	ADDI	-1
 	LOADI	0
-	;JZERO	MoveForward
+	JZERO	MoveForward
 	
 	JUMP	InfLoop
 
@@ -79,6 +109,7 @@ MoveForward:
 	LOADI	&H0
 	STORE	Get_Letter
 	;Wait .2secs
+
 Delay:
 	;Move Forward
 	LOADI  0
@@ -88,11 +119,11 @@ Delay:
 	IN		Timer
 	SUB		Timer_Temp
 	OUT		SSEG2
-	ADDI	-5
+	ADDI	-2
 	JNEG	Delay
-	
+
 	JUMP	InfLoop
-	
+
 Get_Letter:	DW	&H0
 Light17:	DW &H8000
 
@@ -102,65 +133,60 @@ ASCII_a:	DW	&H61
 ASCII_s:	DW	&H73
 ASCII_d:	DW	&H64
 
-
 UART_MASK:	DW	&H00FF
 
-UARTenter:
-	CALL	UARTout
-	RETI
-	
 UARTout:
-	In UART_DAT
-	OUT	SSEG1
-	AND	UART_MASK
-	
-	;Get W
-	SUB ASCII_w
-	JZERO KeyW
-	ADD   ASCII_w
+In UART_DAT
+OUT	SSEG1
+AND	UART_MASK
 
-	;Get A
-	SUB ASCII_a
-	JZERO KeyA
-	ADD   ASCII_a
-	
-	;Get S
-	SUB ASCII_s
-	JZERO KeyS
-	ADD   ASCII_s
+;Get W
+SUB ASCII_w
+JZERO KeyW
+ADD   ASCII_w
 
-	;Get D
-	SUB ASCII_d
-	JZERO KeyD
-	ADD   ASCII_d
+;Get A
+SUB ASCII_a
+JZERO KeyA
+ADD   ASCII_a
 
-	LOADI	0
-	STORE	Get_Letter
-	RETURN
+;Get S
+SUB ASCII_s
+JZERO KeyS
+ADD   ASCII_s
+
+;Get D
+SUB ASCII_d
+JZERO KeyD
+ADD   ASCII_d
+
+LOADI	0
+STORE	Get_Letter
+RETI
 
 KeyW:
-	LOADI	1
-	STORE	Get_Letter
-	OUT	SSEG2
-	RETURN
+LOADI	1
+STORE	Get_Letter
+OUT	SSEG2
+RETI
 
 KeyA:
-	LOADI	2
-	STORE	Get_Letter
-	OUT	SSEG2
-	RETURN
+LOADI	2
+STORE	Get_Letter
+OUT	SSEG2
+RETI
 
 KeyS:
-	LOADI	3
-	STORE	Get_Letter
-	OUT	SSEG2
-	RETURN
+LOADI	3
+STORE	Get_Letter
+OUT	SSEG2
+RETI
 
 KeyD:
-	LOADI	4
-	STORE	Get_Letter
-	OUT	SSEG2
-	RETURN
+LOADI	4
+STORE	Get_Letter
+OUT	SSEG2
+RETI
 ; As a quick demo of the movement control, the robot is 
 ; directed to
 ; - move forward ~1 m at a medium speed,
