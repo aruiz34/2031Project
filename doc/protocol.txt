@@ -40,3 +40,6 @@ Opcodes:
 |sonarEnable   |&H49 |'I'  |8-sonar register |success or     |
 |              |     |     |8-ignored        |failure        |
 +--------------+-----+-----+-----------------+---------------+
+|getOdometerTh |&H4a |'J'  |16-ignored       |odometer theta |
+|              |     |     |                 |value          |
++--------------+-----+-----+-----------------+---------------+
