@@ -1,6 +1,6 @@
 # 2031Project
 This repository contains the assembly for the DE2 bot project.
-In addition, the Raspberry PI controller and UART c code will 
+In addition, the Arduino controller and UART c code will 
 be hosted here.
 # Things to do
 <ol>    
