@@ -1,11 +1,11 @@
 # 2031Project
 This repository contains the assembly for the DE2 bot project.
-In addition, the Raspberry PI controller and UART c code will 
+In addition, the Arduino controller and UART c code will 
 be hosted here.
 # Things to do
 <ol>    
 <li>Setting up bot </li>
-<li>Write wrapper controller for DE2 being controlled by RPI over <s>UART</s>we are now using an arduino due to portability</li>
+  <li>Write wrapper controller for DE2 being controlled by <s>RPI</s> over UART we are now using an arduino due to portability</li>
 <li>Testing for error</li>
 
 <ul>
