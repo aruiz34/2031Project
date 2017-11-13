@@ -34,8 +34,8 @@ Opcodes:
 |stop          |&H47 |'G'  |16-ignored       |success or     |
 |              |     |     |                 |failure        |
 +--------------+-----+-----+-----------------+---------------+
-|alarm         |&H48 |'H'  |16-beep length   |success or     |
-|              |     |     |                 |failure        |
+|beep          |&H48 |'H'  |8-beep length    |success or     |
+|              |     |     |8-beep frequency |failure        |
 +--------------+-----+-----+-----------------+---------------+
 |sonarEnable   |&H49 |'I'  |8-sonar register |success or     |
 |              |     |     |8-ignored        |failure        |
