@@ -1,0 +1,42 @@
+The robot will be controlled over the UART by the following protocol:
+
+The arduino controller will send 1 opcode byte,
+followed by 2 parameter bytes.
+
+The robot will perform the specified operation, then send back 2
+response bytes.
+
+Integers larger than 1 byte will be sent with a big-endian byte order.
+
+Opcodes:
++--------------+-----+-----+-----------------+---------------+
+|Name          |Op.  |Op.  |Parameters       |Response       |
+|              |Hex  |Ascii|                 |               |
++--------------+-----+-----+-----------------+---------------+
+|getSonar      |&H41 |'A'  |8-sonar num.     |sonar value    |
+|              |     |     |8-ignored        |               |
++--------------+-----+-----+-----------------+---------------+
+|getOdometerX  |&H42 |'B'  |16-ignored       |odometer x     |
+|              |     |     |                 |value          |
++--------------+-----+-----+-----------------+---------------+
+|getOdometerY  |&H43 |'C'  |16-ignored       |odometer y     |
+|              |     |     |                 |value          |
++--------------+-----+-----+-----------------+---------------+
+|resetOdometer |&H44 |'D'  |16-ignored       |success or     |
+|              |     |     |                 |failure        |
++--------------+-----+-----+-----------------+---------------+
+|forward       |&H45 |'E'  |16-speed         |success or     |
+|              |     |     |                 |failure        |
++--------------+-----+-----+-----------------+---------------+
+|turn          |&H46 |'F'  |16-angle         |success or     |
+|              |     |     |                 |failure        |
++--------------+-----+-----+-----------------+---------------+
+|stop          |&H47 |'G'  |16-ignored       |success or     |
+|              |     |     |                 |failure        |
++--------------+-----+-----+-----------------+---------------+
+|alarm         |&H48 |'H'  |16-beep length   |success or     |
+|              |     |     |                 |failure        |
++--------------+-----+-----+-----------------+---------------+
+|sonarEnable   |&H49 |'I'  |8-sonar register |success or     |
+|              |     |     |8-ignored        |failure        |
++--------------+-----+-----+-----------------+---------------+
