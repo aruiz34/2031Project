@@ -1,4 +1,3 @@
-
 ; This program includes a basic movement API that allows the
 ; user to specify a desired heading and speed, and the API will
 ; attempt to control the robot in an appropriate way.
@@ -88,106 +87,196 @@ InfLoop:
 	;Set velocity to zero
 	LOADI  0
 	STORE  DTheta      ; Desired angle 0
-	LOADI   350        ; Defined below as 350.
+	LOADI   0        ; Defined below as 350.
 	STORE  DVel        ; Desired forward velocity
-	
-	LOAD	Get_Letter
-	ADDI	-1
-	LOADI	0
+
+InvalidOpcode:
+	;If state of UART is 0 - procede with parsing and consequently execution of chosen subroutine
+	LOAD	UART_STATE
+	JZERO	SubroutineSelect
+	JUMP	InvalidOpcode
+
+SubroutineSelect:	
+	LOAD	GetOpcode
+	ADDI	-5
 	JZERO	MoveForward
 	
-	JUMP	InfLoop
-
-Timer_Temp: DW &H0
+	JUMP	InvalidOpcode
 	
 MoveForward:
-	LOAD	Get_Letter
-	OUT		LEDS
-	IN		Timer
-	STORE	Timer_Temp
-	
+	;Reset UART_STATE
+	LOADI	10
+	STORE	UART_STATE
 
-	LOADI	&H0
-	STORE	Get_Letter
-	;Wait .2secs
+	LOADI	&H0010
+	STORE	GetOpcode
 
-Delay:
 	;Move Forward
 	LOADI  0
 	STORE  DTheta      ; Desired angle 0
-	LOAD   FMid        ; Defined below as 350.
+	LOAD   UARTWord	   ; Speed from UART
 	STORE  DVel        ; Desired forward velocity
-	IN		Timer
-	SUB		Timer_Temp
-	OUT		SSEG2
-	ADDI	-2
-	JNEG	Delay
+	OUT	SSEG2
 
-	JUMP	InfLoop
+	JUMP	InvalidOpcode
 
-Get_Letter:	DW	&H0
+GetOpcode:	DW &H0
 Light17:	DW &H8000
 
 ;ASCII Letters
-ASCII_w:	DW	&H77
-ASCII_a:	DW	&H61
-ASCII_s:	DW	&H73
-ASCII_d:	DW	&H64
+ASCII_A:	DW	&H41
+ASCII_B:	DW	&H42
+ASCII_C:	DW	&H43
+ASCII_D:	DW	&H44
+ASCII_E:	DW	&H45
+ASCII_F:	DW	&H46
+ASCII_G:	DW	&H47
+ASCII_H:	DW	&H48
 
 UART_MASK:	DW	&H00FF
+UART_STATE:	DW	&H0000
+
+;Data registers to be returned to the functions
+UARTWord:		DW	&H0000
+
 
 UARTout:
+;We need three UART values before proceeding
+;if UART_STATE == 1 (ie: opcode is ready to retieve)
+LOAD	UART_STATE
+JZERO	GetOpcode
+
+;if UART_STATE == 1 (ie: if we have already obtaind an opcode)
+ADD	-1
+JZERO	GetMSB
+ADD	1
+
+;if UART_STATE == 2 (ie: if we have already the first byte of DATA)
+ADD	-2
+JZERO	GetLSB
+
+GetOpcode:
+;for dubugging
+LOADI	10
+OUT	SSEG2
+;Set state
+LOADI	1
+STORE	UART_STATE
+;Load in UART Byte
 In UART_DAT
 OUT	SSEG1
 AND	UART_MASK
 
-;Get W
-SUB ASCII_w
-JZERO KeyW
-ADD   ASCII_w
-
 ;Get A
-SUB ASCII_a
+SUB ASCII_A
 JZERO KeyA
-ADD   ASCII_a
+ADD   ASCII_A
 
-;Get S
-SUB ASCII_s
-JZERO KeyS
-ADD   ASCII_s
+;Get B
+SUB ASCII_B
+JZERO KeyB
+ADD   ASCII_B
+
+;Get C
+SUB ASCII_C
+JZERO KeyC
+ADD   ASCII_C
 
 ;Get D
-SUB ASCII_d
+SUB ASCII_D
 JZERO KeyD
-ADD   ASCII_d
+ADD   ASCII_D
 
+;Get E
+SUB ASCII_E
+JZERO KeyE
+ADD   ASCII_E
+
+;Get F
+SUB ASCII_F
+JZERO KeyF
+ADD   ASCII_F
+
+;Get H
+SUB ASCII_H
+JZERO KeyH
+ADD   ASCII_H
+
+;no valid input
 LOADI	0
-STORE	Get_Letter
-RETI
-
-KeyW:
-LOADI	1
-STORE	Get_Letter
-OUT	SSEG2
+STORE	UART_STATE
+STORE	GetOpcode
 RETI
 
 KeyA:
-LOADI	2
-STORE	Get_Letter
+LOADI	1
+STORE	GetOpcode
 OUT	SSEG2
 RETI
 
-KeyS:
+KeyB:
+LOADI	2
+STORE	GetOpcode
+OUT	SSEG2
+RETI
+
+KeyC:
 LOADI	3
-STORE	Get_Letter
+STORE	GetOpcode
 OUT	SSEG2
 RETI
 
 KeyD:
 LOADI	4
-STORE	Get_Letter
+STORE	GetOpcode
 OUT	SSEG2
 RETI
+
+KeyE:
+LOADI	5
+STORE	GetOpcode
+OUT	SSEG2
+RETI
+
+KeyF:
+LOADI	6
+STORE	GetOpcode
+OUT	SSEG2
+RETI
+
+KeyG:
+LOADI	7
+STORE	GetOpcode
+OUT	SSEG2
+RETI
+
+KeyH:
+LOADI	8
+STORE	GetOpcode
+OUT	SSEG2
+RETI
+
+GetMSB:
+;Set future state
+LOADI	2
+STORE	UART_STATE
+In	UART_DAT
+AND	UART_MASK
+SHIFT	8
+STORE	UARTWord
+RETI
+
+GetLSB:
+;Set future state
+LOADI	0
+STORE	UART_STATE
+In	UART_DAT
+AND	UART_MASK
+OR	UARTWord
+STORE	UARTWord
+RETI
+
+
 ; As a quick demo of the movement control, the robot is 
 ; directed to
 ; - move forward ~1 m at a medium speed,
