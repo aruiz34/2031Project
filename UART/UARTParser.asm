@@ -97,7 +97,7 @@ NoOpcode:
 	JUMP	NoOpcode
 
 SubroutineSelect:	
-	LOAD	GetOpcode
+	LOAD	Opcode
 	ADDI	-10
 	JZERO	NoOpcode
 	ADD	10
@@ -111,7 +111,7 @@ SubroutineSelect:
 MoveForward:
 	;prevent select subroutine from executing move forward again
 	LOADI	10
-	STORE	GetOpcode
+	STORE	Opcode
 
 	;Move Forward
 	LOADI  0
@@ -159,7 +159,7 @@ DelayContinue:
 ExitDelay:
 	RETURN
 	
-GetOpcode:	DW 10	;bogus value to make sure no subroutine is executed upon startup
+Opcode:	DW 10	;bogus value to make sure no subroutine is executed upon startup
 Light17:	DW &H8000
 
 ;ASCII Letters
@@ -248,54 +248,54 @@ ADD   ASCII_H
 ;no valid input
 LOADI	0
 STORE	UART_STATE
-STORE	GetOpcode
+STORE	Opcode
 RETI
 
 KeyA:
 LOADI	1
-STORE	GetOpcode
+STORE	Opcode
 OUT	SSEG2
 RETI
 
 KeyB:
 LOADI	2
-STORE	GetOpcode
+STORE	Opcode
 OUT	SSEG2
 RETI
 
 KeyC:
 LOADI	3
-STORE	GetOpcode
+STORE	Opcode
 OUT	SSEG2
 RETI
 
 KeyD:
 LOADI	4
-STORE	GetOpcode
+STORE	Opcode
 OUT	SSEG2
 RETI
 
 KeyE:
 LOADI	5
-STORE	GetOpcode
+STORE	Opcode
 OUT	SSEG2
 RETI
 
 KeyF:
 LOADI	6
-STORE	GetOpcode
+STORE	Opcode
 OUT	SSEG2
 RETI
 
 KeyG:
 LOADI	7
-STORE	GetOpcode
+STORE	Opcode
 OUT	SSEG2
 RETI
 
 KeyH:
 LOADI	8
-STORE	GetOpcode
+STORE	Opcode
 OUT	SSEG2
 RETI
 
