@@ -6,9 +6,9 @@
 ORG 0                  ; Jump table is located in mem 0-4
 ; This code uses the timer interrupt for the control code.
 	JUMP   Init        ; Reset vector
-	JUMP   UARTin	   ; Sonar interrupt (unused)
+	RETI               ; Sonar interrupt (unused)
 	JUMP   CTimer_ISR  ; Timer interrupt
-	RETI     	   ; UART interrupt (unused)
+	RETI   UARTin      ; UART interrupt (unused)
 	RETI               ; Motor stall interrupt (unused)
 
 ;***************************************************************
