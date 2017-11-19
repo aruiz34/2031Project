@@ -116,13 +116,13 @@ MoveForward:
 	;Move Forward
 	LOADI  0
 	STORE  DTheta      ; Desired angle 0
-	LOAD   UARTWord	   ; Speed from UART
+	LOAD   UARTWordIn	   ; Speed from UART
 	STORE  DVel        ; Desired forward velocity
 	OUT	SSEG2
 
 	;return value
 	LOADI	0
-	STORE	UARTWord
+	STORE	UARTWordOut
 	CALL	UARTout
 
 	JUMP	NoOpcode
@@ -133,14 +133,14 @@ UARTout:
 	;UART_DAT IN/OUT read the low byte of the accumulator and sends it to UART device
 
 	;Send out MSB
-	LOAD	UARTWord
+	LOAD	UARTWordOut
 	SHIFT	-8
 	OUT	UART_DAT
 
 	CALL	UART_Delay
 
 	;Send out LSB
-	LOAD	UARTWord
+	LOAD	UARTWordOut
 	OUT	UART_DAT
 	CALL	UART_Delay
 	RETURN
@@ -176,7 +176,8 @@ UART_MASK:	DW	&H00FF
 UART_STATE:	DW	&H0000
 
 ;Data registers to be returned to the functions
-UARTWord:		DW	&H0000
+UARTWordIn:		DW	&H0000
+UARTWordOut:		DW	&H0000
 
 
 UARTin:
@@ -305,7 +306,7 @@ STORE	UART_STATE
 In	UART_DAT
 AND	UART_MASK
 SHIFT	8
-STORE	UARTWord
+STORE	UARTWordIn
 RETI
 
 GetLSB:
@@ -314,8 +315,8 @@ LOADI	0
 STORE	UART_STATE
 In	UART_DAT
 AND	UART_MASK
-OR	UARTWord
-STORE	UARTWord
+OR	UARTWordIn
+STORE	UARTWordIn
 RETI
 
 
@@ -955,35 +956,7 @@ BlockI2C:
 	LOAD   Zero
 	STORE  Temp        ; Used to check for timeout
 BI2CL:
-	LOAD   Temp
-	ADDI   1           ; this will result in ~0.1s timeout
-	STORE  Temp
-	JZERO  I2CError    ; Timeout occurred; error
-	IN     I2C_RDY     ; Read busy signal
-	JPOS   BI2CL       ; If not 0, try again
-	RETURN             ; Else return
-I2CError:
-	LOAD   Zero
-	ADDI   &H12C       ; "I2C"
-	OUT    SSEG1
-	OUT    SSEG2       ; display error message
-	JUMP   I2CError
 
-;***************************************************************
-;* Variables
-;***************************************************************
-Temp:     DW 0 ; "Temp" is not a great name, but can be useful
-ThetaOld: DW 0;
-TWOFT:	DW 609;	
-SONARmask: DW &B11111111;
-ONESECBEEP: DW &H830;
-
-;***************************************************************
-;* Constants
-;* (though there is nothing stopping you from writing to these)
-;***************************************************************
-NegOne:   DW -1
-Zero:     DW 0
 One:      DW 1
 Two:      DW 2
 Three:    DW 3
