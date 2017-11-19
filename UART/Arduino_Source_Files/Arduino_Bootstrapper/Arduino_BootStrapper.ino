@@ -71,7 +71,7 @@ byte SWread()
 
 uint16_t getRetVal(void){
 	uint16_t val=SWread()<<8;
-	val=val & SWread();
+	val |= SWread();
 	return val;
 }
 

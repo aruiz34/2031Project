@@ -6,7 +6,7 @@
 ORG 0                  ; Jump table is located in mem 0-4
 ; This code uses the timer interrupt for the control code.
 	JUMP   Init        ; Reset vector
-	JUMP   UARTout	   ; Sonar interrupt (unused)
+	JUMP   UARTin	   ; Sonar interrupt (unused)
 	JUMP   CTimer_ISR  ; Timer interrupt
 	RETI     	   ; UART interrupt (unused)
 	RETI               ; Motor stall interrupt (unused)
@@ -44,7 +44,7 @@ Main:
 	OUT    RESETPOS    ; reset odometer in case wheels moved after programming
 	
 	; configure timer interrupts to enable the movement control code
-	LOADI  10          ; fire at 10 Hz (10 ms * 10).
+	LOADI  50          ; fire at 10 Hz (10 ms * 10).
 	OUT    CTIMER      ; turn on timer peripheral
 	SEI &B0110      ; enable interrupts from source 2 (Timer)
 	; at this point, timer interrupts will be firing at 10Hz, and
@@ -83,32 +83,34 @@ WaitForUser:
 	LOAD   Zero
 	OUT    XLEDS       ; clear LEDs once ready to continue
 	
-InfLoop:
+Initialize:
 	;Set velocity to zero
 	LOADI  0
 	STORE  DTheta      ; Desired angle 0
 	LOADI   0        ; Defined below as 350.
 	STORE  DVel        ; Desired forward velocity
 
-InvalidOpcode:
+NoOpcode:
 	;If state of UART is 0 - procede with parsing and consequently execution of chosen subroutine
 	LOAD	UART_STATE
 	JZERO	SubroutineSelect
-	JUMP	InvalidOpcode
+	JUMP	NoOpcode
 
 SubroutineSelect:	
 	LOAD	GetOpcode
+	ADDI	-10
+	JZERO	NoOpcode
+	ADD	10
+
 	ADDI	-5
 	JZERO	MoveForward
+	ADDI	5
 	
-	JUMP	InvalidOpcode
+	JUMP	NoOpcode
 	
 MoveForward:
-	;Reset UART_STATE
+	;prevent select subroutine from executing move forward again
 	LOADI	10
-	STORE	UART_STATE
-
-	LOADI	&H0010
 	STORE	GetOpcode
 
 	;Move Forward
@@ -118,9 +120,46 @@ MoveForward:
 	STORE  DVel        ; Desired forward velocity
 	OUT	SSEG2
 
-	JUMP	InvalidOpcode
+	;return value
+	LOADI	0
+	STORE	UARTWord
+	CALL	UARTout
 
-GetOpcode:	DW &H0
+	JUMP	NoOpcode
+
+UARTout:
+	;write two successive values to UART with appropiate delay to avoid collisions
+	;Big Endian order - ie:Most significant byte is written first
+	;UART_DAT IN/OUT read the low byte of the accumulator and sends it to UART device
+
+	;Send out MSB
+	LOAD	UARTWord
+	SHIFT	-8
+	OUT	UART_DAT
+
+	CALL	UART_Delay
+
+	;Send out LSB
+	LOAD	UARTWord
+	OUT	UART_DAT
+	CALL	UART_Delay
+	RETURN
+
+;The next four labels result in a delay of 1/9600 of a second
+;This is assuming that SCOMPs clock speed is 12.5MHZ resulting in a period of .08us
+;The DelayContinue subroutine has three instruction so repeating that subroutine 
+;434 times will result in a delay of about 1/9600 of a second
+LoopLength:	DW	434
+UART_Delay:
+	LOAD	LoopLength
+DelayContinue:
+	ADDI	-1
+	JZERO	ExitDelay	
+	JUMP	DelayContinue
+ExitDelay:
+	RETURN
+	
+GetOpcode:	DW 10	;bogus value to make sure no subroutine is executed upon startup
 Light17:	DW &H8000
 
 ;ASCII Letters
@@ -140,9 +179,9 @@ UART_STATE:	DW	&H0000
 UARTWord:		DW	&H0000
 
 
-UARTout:
+UARTin:
 ;We need three UART values before proceeding
-;if UART_STATE == 1 (ie: opcode is ready to retieve)
+;if UART_STATE == 2 (ie: opcode is ready to retieve)
 LOAD	UART_STATE
 JZERO	GetOpcode
 
@@ -154,6 +193,9 @@ ADD	1
 ;if UART_STATE == 2 (ie: if we have already the first byte of DATA)
 ADD	-2
 JZERO	GetLSB
+;Reset UART to known state so to avoid erratic behavior upon exiting functoin
+LOADI	0
+RETI
 
 GetOpcode:
 ;for dubugging

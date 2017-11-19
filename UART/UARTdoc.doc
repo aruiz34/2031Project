@@ -1,0 +1,24 @@
+--UARTParser--
+----------------------------------------------------------------------------------------------------
+* The UART Ready hardware interrupt transfers SCOMP control to the UARTin subroutine which is effectively the UARTParser for bytes recieved via the UART
+* The UARTParser has three states and switches between them in the following order.
+	1. GetOpcode
+	2. GetMSB
+	3. GetLSB
+* In get LSB, the byte retrived in subrountine GetMSB is concatenated with the byte retrieved in GetLSB into the register UARTWord.
+* Upon failure to execute GetOpcode, or even set opcode, the GetOpcode state is automatically returned to.
+
+--Selecting a Subroutine--
+----------------------------------------------------------------------------------------------------
+1. When the hardware interrupt has not been triggered, an infinite loop is running that waits for the State register to have to be set to state GetOpcode
+2. It then procedes to select an appropiate subroutine based on the opcode specified.
+3. The selected subroutine is then executed which can use the UARTWord register as an argument.
+4. If the chosen subrountine has information to write back to the UART, it stores it in UARTWord and sets UARTWrite to 1.
+
+--Writing to UART--
+Writing the UART is fairly involved because of the fact that the hardware was originally intended to interface with a radio by packets. Thus when the UART buffer is empty, the UART device waits .5 seconds before checking the buffer again. The UART device will also pause for .5 seconds if more than 32bytes are sent in half a second.
+----------------------------------------------------------------------------------------------------
+To solve this problem, the write_limited signal in the UART bdf file driving the wrreq pin of the buffer has been changed to the write signal.
+----------------------------------------------------------------------------------------------------
+Other
+We will also have a subroutine called UART_Delay that will be called between successive writes to the UARTto prevent buffer overflow.
