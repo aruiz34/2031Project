@@ -956,7 +956,31 @@ BlockI2C:
 	LOAD   Zero
 	STORE  Temp        ; Used to check for timeout
 BI2CL:
+	LOAD   Temp
+	ADDI   1           ; this will result in ~0.1s timeout
+	STORE  Temp
+	JZERO  I2CError    ; Timeout occurred; error
+	IN     I2C_RDY     ; Read busy signal
+	JPOS   BI2CL       ; If not 0, try again
+	RETURN             ; Else return
+I2CError:
+	LOAD   Zero
+	ADDI   &H12C       ; "I2C"
+	OUT    SSEG1
+	OUT    SSEG2       ; display error message
+	JUMP   I2CError
 
+;***************************************************************
+;* Variables
+;***************************************************************
+Temp:     DW 0 ; "Temp" is not a great name, but can be useful
+
+;***************************************************************
+;* Constants
+;* (though there is nothing stopping you from writing to these)
+;***************************************************************
+NegOne:   DW -1
+Zero:     DW 0
 One:      DW 1
 Two:      DW 2
 Three:    DW 3
