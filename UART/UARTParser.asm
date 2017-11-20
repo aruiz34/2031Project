@@ -1,3 +1,4 @@
+;New 4:54
 ; This program includes a basic movement API that allows the
 ; user to specify a desired heading and speed, and the API will
 ; attempt to control the robot in an appropriate way.
@@ -8,13 +9,143 @@ ORG 0                  ; Jump table is located in mem 0-4
 	JUMP   Init        ; Reset vector
 	RETI               ; Sonar interrupt (unused)
 	JUMP   CTimer_ISR  ; Timer interrupt
-	RETI   UARTin      ; UART interrupt (unused)
+	JUMP	UARTin      ; UART interrupt (unused)
 	RETI               ; Motor stall interrupt (unused)
 
 ;***************************************************************
 ;* Initialization
 ;***************************************************************
-	
+
+DEAD:  DW &HDEAD   ; Example of a "local" variable
+DTheta:    DW 0
+DVel:      DW 0
+
+
+CMAErr: DW 0       ; holds angle error velocity
+CMAL:    DW 0      ; holds temp left velocity
+CMAR:    DW 0      ; holds temp right velocity
+
+
+MaxVal: DW 510
+
+;From Atan subroutine
+
+AtanX:      DW 0
+AtanY:      DW 0
+AtanRatio:  DW 0        ; =y/x
+AtanT:      DW 0        ; temporary value
+A2c:        DW 72       ; 72/256=0.28125, with 8 fractional bits
+A2cd:       DW 14668    ; = 180/pi with 8 fractional bits
+
+
+
+c7FFF: DW &H7FFF
+m16sA: DW 0 ; multiplicand
+m16sB: DW 0 ; multipler
+m16sc: DW 0 ; carry
+mcnt16s: DW 0 ; counter
+mres16sL: DW 0 ; result low
+mres16sH: DW 0 ; result high
+
+d16sN: DW 0 ; numerator
+d16sD: DW 0 ; denominator
+d16sS: DW 0 ; sign value
+d16sT: DW 0 ; temp counter
+d16sC1: DW 0 ; carry value
+d16sC2: DW 0 ; carry value
+dres16sQ: DW 0 ; quotient result
+dres16sR: DW 0 ; remainder result
+
+
+L2X:  DW 0
+L2Y:  DW 0
+L2T1: DW 0
+L2T2: DW 0
+L2T3: DW 0
+
+;***************************************************************
+;* Variables
+;***************************************************************
+Temp:     DW 0 ; "Temp" is not a great name, but can be useful
+
+;***************************************************************
+;* Constants
+;* (though there is nothing stopping you from writing to these)
+;***************************************************************
+
+NegOne:   DW -1
+Zero:     DW 0
+One:      DW 1
+Two:      DW 2
+Three:    DW 3
+Four:     DW 4
+Five:     DW 5
+Six:      DW 6
+Seven:    DW 7
+Eight:    DW 8
+Nine:     DW 9
+Ten:      DW 10
+
+; Some bit masks.
+; Masks of multiple bits can be constructed by ORing these
+; 1-bit masks together.
+Mask0:    DW &B00000001
+Mask1:    DW &B00000010
+Mask2:    DW &B00000100
+Mask3:    DW &B00001000
+Mask4:    DW &B00010000
+Mask5:    DW &B00100000
+Mask6:    DW &B01000000
+Mask7:    DW &B10000000
+LowByte:  DW &HFF      ; binary 00000000 1111111
+LowNibl:  DW &HF       ; 0000 0000 0000 1111
+
+; some useful movement values
+OneMeter: DW 961       ; ~1m in 1.04mm units
+HalfMeter: DW 481      ; ~0.5m in 1.04mm units
+TwoFeet:  DW 586       ; ~2ft in 1.04mm units
+OneFoot:  DW 293       ; ~2ft in 1.04mm units
+Deg90:    DW 90        ; 90 degrees in odometer units
+Deg180:   DW 180       ; 180
+Deg270:   DW 270       ; 270
+Deg360:   DW 360       ; can never actually happen; for math only
+FSlow:    DW 100       ; 100 is about the lowest velocity value that will move
+RSlow:    DW -100
+FMid:     DW 350       ; 350 is a medium speed
+RMid:     DW -350
+FFast:    DW 500       ; 500 is almost max speed (511 is max)
+RFast:    DW -500
+
+MinBatt:  DW 140       ; 14.0V - minimum safe battery voltage
+I2CWCmd:  DW &H1190    ; write one i2c byte, read one byte, addr 0x90
+I2CRCmd:  DW &H0190    ; write nothing, read one byte, addr 0x90
+
+;Our local variables
+getTime:	DW	&H00
+LoopLength:	DW	434
+Opcode:		DW 	10	;bogus value to make sure no subroutine is executed upon startup
+Light17:	DW 	&H8000
+
+
+;ASCII Letters
+ASCII_A:	DW	&H41
+ASCII_B:	DW	&H42
+ASCII_C:	DW	&H43
+ASCII_D:	DW	&H44
+ASCII_E:	DW	&H45
+ASCII_F:	DW	&H46
+ASCII_G:	DW	&H47
+ASCII_H:	DW	&H48
+
+UART_MASK:	DW	&H00FF
+UART_STATE:	DW	&H0000
+
+;Data registers to be returned to the functions
+UARTWordIn:		DW	&H0000
+UARTWordOut:		DW	&H0000
+
+
+
 Init:
 	; Always a good idea to make sure the robot
 	; stops in the event of a reset.
@@ -30,11 +161,6 @@ Init:
 	CALL   BattCheck   ; Get battery voltage (and end if too low).
 	OUT    LCD         ; Display battery voltage (hex, tenths of volts)
 	LOAD   Zero
-
-
-	
-
-
 
 ;***************************************************************
 ;* Main code
@@ -89,9 +215,17 @@ Initialize:
 	STORE  DTheta      ; Desired angle 0
 	LOADI   0        ; Defined below as 350.
 	STORE  DVel        ; Desired forward velocity
-
+	LOADI  52
+	OUT   UART_DAT
 NoOpcode:
 	;If state of UART is 0 - procede with parsing and consequently execution of chosen subroutine
+	LOADI	5
+	OUT		LEDS
+	CALL	UART_Delay
+	LOADI	7
+	OUT		LEDS
+	
+	
 	LOAD	UART_STATE
 	JZERO	SubroutineSelect
 	JUMP	NoOpcode
@@ -100,7 +234,7 @@ SubroutineSelect:
 	LOAD	Opcode
 	ADDI	-10
 	JZERO	NoOpcode
-	ADD	10
+	ADDI	10
 
 	ADDI	-5
 	JZERO	MoveForward
@@ -118,7 +252,7 @@ MoveForward:
 	STORE  DTheta      ; Desired angle 0
 	LOAD   UARTWordIn	   ; Speed from UART
 	STORE  DVel        ; Desired forward velocity
-	OUT	SSEG2
+
 
 	;return value
 	LOADI	0
@@ -149,7 +283,6 @@ UARTout:
 ;This is assuming that SCOMPs clock speed is 12.5MHZ resulting in a period of .08us
 ;The DelayContinue subroutine has three instruction so repeating that subroutine 
 ;434 times will result in a delay of about 1/9600 of a second
-LoopLength:	DW	434
 UART_Delay:
 	LOAD	LoopLength
 DelayContinue:
@@ -159,58 +292,49 @@ DelayContinue:
 ExitDelay:
 	RETURN
 	
-Opcode:	DW 10	;bogus value to make sure no subroutine is executed upon startup
-Light17:	DW &H8000
 
-;ASCII Letters
-ASCII_A:	DW	&H41
-ASCII_B:	DW	&H42
-ASCII_C:	DW	&H43
-ASCII_D:	DW	&H44
-ASCII_E:	DW	&H45
-ASCII_F:	DW	&H46
-ASCII_G:	DW	&H47
-ASCII_H:	DW	&H48
-
-UART_MASK:	DW	&H00FF
-UART_STATE:	DW	&H0000
-
-;Data registers to be returned to the functions
-UARTWordIn:		DW	&H0000
-UARTWordOut:		DW	&H0000
 
 
 UARTin:
 ;We need three UART values before proceeding
-;if UART_STATE == 2 (ie: opcode is ready to retieve)
+;if UART_STATE == 0 (ie: opcode is ready to retieve)
 LOAD	UART_STATE
+out LCD
 JZERO	GetOpcode
-
+out SSEG2
+;out LCD
 ;if UART_STATE == 1 (ie: if we have already obtaind an opcode)
-ADD	-1
+ADDI	-1
+
 JZERO	GetMSB
-ADD	1
+
+
+ADDI	1
 
 ;if UART_STATE == 2 (ie: if we have already the first byte of DATA)
-ADD	-2
+ADDI	-2
 JZERO	GetLSB
 ;Reset UART to known state so to avoid erratic behavior upon exiting functoin
+;out LCD
 LOADI	0
 RETI
 
 GetOpcode:
 ;for dubugging
 LOADI	10
-OUT	SSEG2
+
+
 ;Set state
 LOADI	1
 STORE	UART_STATE
+
 ;Load in UART Byte
 In UART_DAT
-OUT	SSEG1
+
 AND	UART_MASK
 
 ;Get A
+
 SUB ASCII_A
 JZERO KeyA
 ADD   ASCII_A
@@ -301,16 +425,24 @@ RETI
 
 GetMSB:
 ;Set future state
+;LoadI	11
+
+Load	Zero
 LOADI	2
 STORE	UART_STATE
 In	UART_DAT
 AND	UART_MASK
 SHIFT	8
 STORE	UARTWordIn
+LoadI	UART_STATE
+;out SSEG1
+
 RETI
 
 GetLSB:
 ;Set future state
+LoadI	12
+
 LOADI	0
 STORE	UART_STATE
 In	UART_DAT
@@ -379,7 +511,7 @@ GoTo00: ; slightly better label than "test"
 	STORE  AtanY
 	CALL   Atan2       ; Gets the angle from (0,0) to (AtanX,AtanY)
 	STORE  DTheta
-	OUT    SSEG1       ; Display angle for debugging
+	;OUT    SSEG1       ; Display angle for debugging
 	
 	; The following bit of code uses another provided subroutine,
 	; L2Estimate, the calculate the distance to (0,0).  Once again,
@@ -390,7 +522,7 @@ GoTo00: ; slightly better label than "test"
 	IN     YPOS
 	STORE  L2Y
 	CALL   L2Estimate
-	OUT    SSEG2       ; Display distance for debugging
+	;OUT    SSEG2       ; Display distance for debugging
 	SUB    OneFoot
 	JPOS   GoTo00      ; If >1 ft from destination, continue
 	; robot is now near the origin
@@ -415,7 +547,6 @@ Die:
 	OUT    SSEG2       ; "dEAd" on the sseg
 Forever:
 	JUMP   Forever     ; Do this forever.
-	DEAD:  DW &HDEAD   ; Example of a "local" variable
 
 
 ; Timer ISR.  Currently just calls the movement control code.
@@ -428,8 +559,6 @@ CTimer_ISR:
 ; Control code.  If called repeatedly, this code will attempt
 ; to control the robot to face the angle specified in DTheta
 ; and match the speed specified in DVel
-DTheta:    DW 0
-DVel:      DW 0
 ControlMovement:
 	LOADI  50          ; used for the CapValue subroutine
 	STORE  MaxVal
@@ -487,9 +616,6 @@ CMADone:
 	OUT    RVELCMD
 
 	RETURN
-	CMAErr: DW 0       ; holds angle error velocity
-	CMAL:    DW 0      ; holds temp left velocity
-	CMAR:    DW 0      ; holds temp right velocity
 
 ; Returns the current angular error wrapped to +/-180
 GetThetaErr:
@@ -519,7 +645,6 @@ CapVelLow:
 	LOAD    MaxVal
 	CALL    Neg
 	RETURN
-	MaxVal: DW 510
 
 ;***************************************************************
 ;* Subroutines
@@ -685,12 +810,6 @@ A2_DD:
 	SHIFT  -1           ; have to scale denominator
 	STORE  d16sD
 	JUMP   A2_DL
-AtanX:      DW 0
-AtanY:      DW 0
-AtanRatio:  DW 0        ; =y/x
-AtanT:      DW 0        ; temporary value
-A2c:        DW 72       ; 72/256=0.28125, with 8 fractional bits
-A2cd:       DW 14668    ; = 180/pi with 8 fractional bits
 
 ;*******************************************************************************
 ; Mult16s:  16x16 -> 32-bit signed multiplication
@@ -740,13 +859,6 @@ Mult16s_sh:
 	LOAD   m16sB
 	STORE  mres16sL     ; multiplier and result L shared a word
 	RETURN              ; Done
-c7FFF: DW &H7FFF
-m16sA: DW 0 ; multiplicand
-m16sB: DW 0 ; multipler
-m16sc: DW 0 ; carry
-mcnt16s: DW 0 ; counter
-mres16sL: DW 0 ; result low
-mres16sH: DW 0 ; result high
 
 ;*******************************************************************************
 ; Div16s:  16/16 -> 16 R16 signed division
@@ -812,14 +924,6 @@ Div16s_neg:
 	CALL   Neg
 	STORE  dres16sQ
 	RETURN	
-d16sN: DW 0 ; numerator
-d16sD: DW 0 ; denominator
-d16sS: DW 0 ; sign value
-d16sT: DW 0 ; temp counter
-d16sC1: DW 0 ; carry value
-d16sC2: DW 0 ; carry value
-dres16sQ: DW 0 ; quotient result
-dres16sR: DW 0 ; remainder result
 
 ;*******************************************************************************
 ; L2Estimate:  Pythagorean distance estimation
@@ -880,11 +984,6 @@ GDSwap: ; swaps the incoming X and Y
 	STORE  L2T1
 	LOAD   L2T3
 	JUMP   CalcDist
-L2X:  DW 0
-L2Y:  DW 0
-L2T1: DW 0
-L2T2: DW 0
-L2T3: DW 0
 
 
 ; Subroutine to wait (block) for 1 second
@@ -913,8 +1012,8 @@ DeadBatt:
 	LOADI  &H20
 	OUT    BEEP        ; start beep sound
 	CALL   GetBattLvl  ; get the battery level
-	OUT    SSEG1       ; display it everywhere
-	OUT    SSEG2
+	;OUT    SSEG1       ; display it everywhere
+	;OUT    SSEG2
 	OUT    LCD
 	LOAD   Zero
 	ADDI   -1          ; 0xFFFF
@@ -966,65 +1065,13 @@ BI2CL:
 I2CError:
 	LOAD   Zero
 	ADDI   &H12C       ; "I2C"
-	OUT    SSEG1
-	OUT    SSEG2       ; display error message
+	;OUT    SSEG1
+	;OUT    SSEG2       ; display error message
 	JUMP   I2CError
 
-;***************************************************************
-;* Variables
-;***************************************************************
-Temp:     DW 0 ; "Temp" is not a great name, but can be useful
 
-;***************************************************************
-;* Constants
-;* (though there is nothing stopping you from writing to these)
-;***************************************************************
-NegOne:   DW -1
-Zero:     DW 0
-One:      DW 1
-Two:      DW 2
-Three:    DW 3
-Four:     DW 4
-Five:     DW 5
-Six:      DW 6
-Seven:    DW 7
-Eight:    DW 8
-Nine:     DW 9
-Ten:      DW 10
 
-; Some bit masks.
-; Masks of multiple bits can be constructed by ORing these
-; 1-bit masks together.
-Mask0:    DW &B00000001
-Mask1:    DW &B00000010
-Mask2:    DW &B00000100
-Mask3:    DW &B00001000
-Mask4:    DW &B00010000
-Mask5:    DW &B00100000
-Mask6:    DW &B01000000
-Mask7:    DW &B10000000
-LowByte:  DW &HFF      ; binary 00000000 1111111
-LowNibl:  DW &HF       ; 0000 0000 0000 1111
 
-; some useful movement values
-OneMeter: DW 961       ; ~1m in 1.04mm units
-HalfMeter: DW 481      ; ~0.5m in 1.04mm units
-TwoFeet:  DW 586       ; ~2ft in 1.04mm units
-OneFoot:  DW 293       ; ~2ft in 1.04mm units
-Deg90:    DW 90        ; 90 degrees in odometer units
-Deg180:   DW 180       ; 180
-Deg270:   DW 270       ; 270
-Deg360:   DW 360       ; can never actually happen; for math only
-FSlow:    DW 100       ; 100 is about the lowest velocity value that will move
-RSlow:    DW -100
-FMid:     DW 350       ; 350 is a medium speed
-RMid:     DW -350
-FFast:    DW 500       ; 500 is almost max speed (511 is max)
-RFast:    DW -500
-
-MinBatt:  DW 140       ; 14.0V - minimum safe battery voltage
-I2CWCmd:  DW &H1190    ; write one i2c byte, read one byte, addr 0x90
-I2CRCmd:  DW &H0190    ; write nothing, read one byte, addr 0x90
 
 ;***************************************************************
 ;* IO address space map
