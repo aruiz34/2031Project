@@ -16,19 +16,31 @@
 byte rx = 13;
 byte tx = 14;
 byte SWval;
+char testVal;
 
 const uint16_t MSB=0xff00;
 const uint16_t LSB=0x00ff;
 
 void setup() {
-	pinMode(rx,INPUT);
+  pinMode(rx,INPUT);
 	pinMode(tx,OUTPUT);
 	digitalWrite(tx,HIGH);
 	delay(2);
 	digitalWrite(13,HIGH); //turn on debugging LED
-	SWprint('h');  //debugging hello
-	SWprint('i');
+	//SWprint('h');  //debugging hello
+	//SWprint('i');
 	SWprint(10); //carriage return
+
+  //setup serial
+  Serial.begin(9600);  
+  
+  while (!Serial) {
+    ; // wait for serial port to connect. Needed for native USB port only
+  }
+ Serial.println("Arduino Started");
+ SWread();
+ Serial.println("Byte Recieved");
+ delay(1000);
 }
 
 void SWprint(byte data)
@@ -72,6 +84,7 @@ byte SWread()
 uint16_t getRetVal(void){
 	uint16_t val=SWread()<<8;
 	val |= SWread();
+  //MSWread();
 	return val;
 }
 
@@ -107,6 +120,7 @@ uint16_t forward(uint16_t speed){
 	SWprint(0x45);
 	SWprint((speed & MSB)>>8);
 	SWprint(speed & LSB);
+	//
 	return getRetVal();
 }
 
@@ -147,6 +161,15 @@ uint16_t getOdometerTh(void){
 
 void loop()
 {
-	SWval = SWread();
-	SWprint(toupper(SWval));
+  
+  Serial.println("debug");
+	testVal = forward(300);
+	//SWval = SWread();
+  Serial.println("done");
+  Serial.println(testVal);
+  delay(1500);
+  testVal = forward(0);
+  delay(1500);
+  //SWval = Serial.read();
+	//SWprint(toupper(SWval));
 }
