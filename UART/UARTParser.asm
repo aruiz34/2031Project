@@ -405,7 +405,6 @@ MoveStop:
 
 	;Stop
 	LOADI  0
-	STORE  DTheta      ; Desired angle
 	STORE  DVel        ; Desired forward velocity 0
 
 
