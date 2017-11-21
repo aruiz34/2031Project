@@ -176,7 +176,7 @@ void routine1(){	//clear baffle
  Serial.println(getSonar(0));
 	while(1){
     Serial.println(getSonar(0));
-		forward(350);	
+		forward(350);
 		delay(50);
     valueSonar = getSonar(0);
     if ((valueSonar < 1524) && (valueSonar < 30000)){
@@ -188,6 +188,7 @@ void routine1(){	//clear baffle
 	//turn off sonars to avoid future problems
 	sonarEnable(0);
 }
+
 void routine2(){
 	resetOdometer();
 	while(getOdometerX() < 510){
@@ -197,10 +198,20 @@ void routine2(){
 	int originalTheta = convertAngle(getOdometerTh());
 	int currentTheta  = originalTheta;
 	turn(90);
-  delay(3000);
-	
+	delay(4000);
 
+}
 
+void routine3(){
+	sonarEnable(B5 | B0);
+	resetOdometer();
+	while(getOdometerX() < 1530){
+		forward(350);
+		delay(50);
+	}
+	turn(180);
+	delay(4000);
+	sonarEnable(0);
 }
 
 void loop()
