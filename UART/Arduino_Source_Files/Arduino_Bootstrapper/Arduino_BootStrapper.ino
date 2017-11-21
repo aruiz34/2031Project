@@ -11,12 +11,24 @@
 #define bit4800Delay 188
 #define halfBit4800Delay 94
 
+#define B0 0x01
+#define B1 0x02
+#define B2 0x04
+#define B3 0x08
+#define B4 0x10
+#define B5 0x20
+#define B6 0x40
+#define B7 0x80
+
 //#define byte uint8_t
 
 byte rx = 13;
 byte tx = 14;
 byte SWval;
 char testVal;
+char debug;
+bool started = 0;
+int valueSonar;
 
 const uint16_t MSB=0xff00;
 const uint16_t LSB=0x00ff;
@@ -27,20 +39,17 @@ void setup() {
 	digitalWrite(tx,HIGH);
 	delay(2);
 	digitalWrite(13,HIGH); //turn on debugging LED
-	//SWprint('h');  //debugging hello
-	//SWprint('i');
-	SWprint(10); //carriage return
 
-  //setup serial
+	 delay(1000);
+   //setup serial - for debugging and testing implemented commands - remove later
   Serial.begin(9600);  
   
   while (!Serial) {
     ; // wait for serial port to connect. Needed for native USB port only
   }
- Serial.println("Arduino Started");
+   Serial.println("Arduino Started");
  SWread();
  Serial.println("Byte Recieved");
- delay(1000);
 }
 
 void SWprint(byte data)
@@ -90,8 +99,8 @@ uint16_t getRetVal(void){
 
 uint16_t getSonar(uint8_t snum){
 	SWprint(0x41);
-	SWprint(snum);
 	SWprint(0x00);
+	SWprint(snum);
 	return getRetVal();
 }
 
@@ -147,8 +156,8 @@ uint16_t beep(uint8_t len, uint8_t freq){
 
 uint16_t sonarEnable(uint8_t smask){
 	SWprint(0x49);
-	SWprint(smask);
 	SWprint(0x00);
+	SWprint(smask);
 	return getRetVal();
 }
 
@@ -158,18 +167,52 @@ uint16_t getOdometerTh(void){
 	SWprint(0x00);
 	return getRetVal();
 }
+int convertAngle(int arg){
+	return (arg>180)  ? arg - 360 : arg;
+}
+void routine1(){	//clear baffle
+	sonarEnable(B5 | B0);
+ Serial.println("in routine 1");
+ Serial.println(getSonar(0));
+	while(1){
+    Serial.println(getSonar(0));
+		forward(350);	
+		delay(50);
+    valueSonar = getSonar(0);
+    if ((valueSonar < 1524) && (valueSonar < 30000)){
+      break;
+      Serial.println(valueSonar);
+    }
+	}
+	stop();
+	//turn off sonars to avoid future problems
+	sonarEnable(0);
+}
+void routine2(){
+	resetOdometer();
+	while(getOdometerX() < 610){
+		forward(350);
+		delay(50);
+	}
+	int originalTheta = convertAngle(getOdometerTh());
+	int currentTheta  = originalTheta;
+	turn(90);
+		while((currentTheta - originalTheta) <  89){
+			currentTheta = getOdometerTh();
+			delay(50);
+		}
+	delay(200);
+	
+
+
+}
 
 void loop()
 {
   
-  Serial.println("debug");
-	testVal = forward(300);
-	//SWval = SWread();
-  Serial.println("done");
-  Serial.println(testVal);
-  delay(1500);
-  testVal = forward(0);
-  delay(1500);
-  //SWval = Serial.read();
-	//SWprint(toupper(SWval));
+	if(!started){
+		routine1();
+   Serial.println("im alive");
+	}	
+	started = 1;
 }

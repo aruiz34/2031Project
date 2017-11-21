@@ -18,6 +18,7 @@ byte tx = 14;
 byte SWval;
 char testVal;
 char debug;
+bool started = 0;
 
 const uint16_t MSB=0xff00;
 const uint16_t LSB=0x00ff;
@@ -188,51 +189,27 @@ void odometryTest(){
 
 void movementTest(){
 	resetOdometer();
+  stop();
 	Serial.println("RESET");
 	odometryTest();
 	Serial.println();
 
-	Serial.println("Forward");
-	forward(350);
-	delay(1000);
-	odometryTest();
-	Serial.println();
+  int distance = getOdometerX();
+  while(getOdometerX() < 610){
+    Serial.println(getOdometerX());
+    //forward(350);
+    delay(50);
+    }
+    delay(50);
+   stop();
 
-	Serial.println("Stop");
-	stop();
-	delay(500);
-	odometryTest();
-	Serial.println();
-
-	Serial.println("turn 90");
-	turn(90);
-	delay(500);
-	odometryTest();
-	Serial.println();
-
-	Serial.println("turn 270");
-	turn(270);
-	delay(500);
-	odometryTest();
-	Serial.println();
 	
 }
 void loop()
 {
 	delay(1500);
 	Serial.println("I'm Still Alive");
-	movementTest();
-
-
-	
-//	Serial.println("debug");
-//	       testVal = forward(300);
-//	       //SWval = SWread();
-//	 Serial.println("done");
-//	 Serial.println(testVal);
-//	 delay(1500);
-//	 testVal = forward(0);
-//	 delay(1500);
-//	 //SWval = Serial.read();
-//		//SWprint(toupper(SWval));
+	if(!started)
+	  movementTest();
+  started = 1;
 }
