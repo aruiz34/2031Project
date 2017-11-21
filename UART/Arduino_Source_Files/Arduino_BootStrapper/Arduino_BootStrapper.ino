@@ -181,7 +181,6 @@ void routine1(){	//clear baffle
     valueSonar = getSonar(0);
     if (!((valueSonar < 1524) && (valueSonar < 30000))){
       break;
-      
     }
     Serial.println(valueSonar);
 	}
