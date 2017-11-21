@@ -190,18 +190,14 @@ void routine1(){	//clear baffle
 }
 void routine2(){
 	resetOdometer();
-	while(getOdometerX() < 610){
+	while(getOdometerX() < 510){
 		forward(350);
 		delay(50);
 	}
 	int originalTheta = convertAngle(getOdometerTh());
 	int currentTheta  = originalTheta;
 	turn(90);
-		while((currentTheta - originalTheta) <  89){
-			currentTheta = getOdometerTh();
-			delay(50);
-		}
-	delay(200);
+  delay(3000);
 	
 
 
