@@ -123,7 +123,7 @@ I2CRCmd:  DW &H0190    ; write nothing, read one byte, addr 0x90
 ;Our local variables
 getTime:	DW	&H00
 LoopLength:	DW	434
-Opcode:		DW 	10	;bogus value to make sure no subroutine is executed upon startup
+Opcode:		DW 	0	;bogus value to make sure no subroutine is executed upon startup
 Light17:	DW 	&H8000
 
 
@@ -136,6 +136,8 @@ ASCII_E:	DW	&H45
 ASCII_F:	DW	&H46
 ASCII_G:	DW	&H47
 ASCII_H:	DW	&H48
+ASCII_I:	DW	&H49
+ASCII_J:	DW	&H4a
 
 UART_MASK:	DW	&H00FF
 UART_STATE:	DW	&H0000
@@ -224,27 +226,143 @@ NoOpcode:
 	CALL	UART_Delay
 	LOADI	7
 	OUT		LEDS
-	
-	
+
+
 	LOAD	UART_STATE
 	JZERO	SubroutineSelect
 	JUMP	NoOpcode
 
-SubroutineSelect:	
+SubroutineSelect:
 	LOAD	Opcode
-	ADDI	-10
 	JZERO	NoOpcode
-	ADDI	10
+
+	ADDI	-1
+	JZERO	GetSonar
+	ADDI	1
+
+	ADDI	-2
+	JZERO	GetOdometerX
+	ADDI	2
+
+	ADDI	-3
+	JZERO	GetOdometerY
+	ADDI	3
+
+	ADDI	-4
+	JZERO	ResetOdometer
+	ADDI	4
 
 	ADDI	-5
 	JZERO	MoveForward
 	ADDI	5
-	
+
+	ADDI	-6
+	JZERO	MoveTurn
+	ADDI	6
+
+	ADDI	-7
+	JZERO	MoveStop
+	ADDI	7
+
+	ADDI	-8
+	JZERO	MakeBeep
+	ADDI	8
+
+	ADDI	-9
+	JZERO	SonarEnable
+	ADDI	9
+
+	ADDI	-10
+	JZERO	GetOdometerTheta
+	ADDI	10
+
 	JUMP	NoOpcode
-	
+
+GetOdometerX:
+	LOADI	0
+	STORE	Opcode
+
+	IN XPOS
+	STORE UARTWordOut
+	CALL UARTout
+	JUMP	NoOpcode
+
+GetOdometerY:
+	LOADI	0
+	STORE	Opcode
+
+	IN YPOS
+	STORE UARTWordOut
+	CALL UARTout
+	JUMP	NoOpcode
+
+GetOdometerTheta:
+	LOADI	0
+	STORE	Opcode
+
+	IN THETA
+	STORE UARTWordOut
+	CALL UARTout
+	JUMP	NoOpcode
+
+ResetOdometer:
+	LOADI	0
+	STORE	Opcode
+
+	OUT RESETPOS
+	STORE UARTWordOut
+	CALL UARTout
+	JUMP	NoOpcode
+
+GetSonar:
+	LOADI	0
+	STORE	Opcode
+
+	LOAD UARTWordIn
+	JZERO Son0
+	ADDI -1
+	JZERO Son1
+	ADDI -1
+	JZERO Son2
+	ADDI -1
+	JZERO Son3
+	ADDI -1
+	JZERO Son4
+	ADDI -1
+	JZERO Son5
+	ADDI -1
+	JZERO Son6
+	ADDI -1
+	JZERO Son7
+
+	LOADI 0
+	STORE UARTWordOut
+	CALL UARTout
+
+Son0: IN DIST0
+	JUMP SonRet
+Son1: IN DIST1
+	JUMP SonRet
+Son2: IN DIST2
+	JUMP SonRet
+Son3: IN DIST3
+	JUMP SonRet
+Son4: IN DIST4
+	JUMP SonRet
+Son5: IN DIST5
+	JUMP SonRet
+Son6: IN DIST6
+	JUMP SonRet
+Son7: IN DIST7
+
+SonRet:
+	STORE UARTWordOut
+	CALL UARTout
+	JUMP	NoOpcode
+
 MoveForward:
 	;prevent select subroutine from executing move forward again
-	LOADI	10
+	LOADI	0
 	STORE	Opcode
 
 	;Move Forward
@@ -255,6 +373,70 @@ MoveForward:
 
 
 	;return value
+	LOADI	0
+	STORE	UARTWordOut
+	CALL	UARTout
+
+	JUMP	NoOpcode
+
+MoveTurn:
+	;prevent select subroutine from executing move forward again
+	LOADI	0
+	STORE	Opcode
+
+	;Move Forward
+	LOAD   UARTWordIn	   ; Angle from UART
+	STORE  DTheta      ; Desired angle
+	LOADI  0
+	STORE  DVel        ; Desired forward velocity 0
+
+
+	;return value
+	LOADI	0
+	STORE	UARTWordOut
+	CALL	UARTout
+
+	JUMP	NoOpcode
+
+MoveStop:
+	;prevent select subroutine from executing move forward again
+	LOADI	0
+	STORE	Opcode
+
+	;Stop
+	LOADI  0
+	STORE  DTheta      ; Desired angle
+	STORE  DVel        ; Desired forward velocity 0
+
+
+	;return value
+	LOADI	0
+	STORE	UARTWordOut
+	CALL	UARTout
+
+	JUMP	NoOpcode
+
+MakeBeep:
+	LOADI	0
+	STORE	Opcode
+
+	LOAD   UARTWordIn
+	OUT BEEP
+
+	LOADI	0
+	STORE	UARTWordOut
+	CALL	UARTout
+
+	JUMP	NoOpcode
+
+SonarEnable:
+	LOADI	0
+	STORE	Opcode
+
+	LOAD   UARTWordIn
+	AND UART_MASK
+	OUT SONAREN
+
 	LOADI	0
 	STORE	UARTWordOut
 	CALL	UARTout
@@ -364,10 +546,27 @@ SUB ASCII_F
 JZERO KeyF
 ADD   ASCII_F
 
+;Get G
+SUB ASCII_G
+JZERO KeyG
+ADD   ASCII_G
+
 ;Get H
 SUB ASCII_H
 JZERO KeyH
 ADD   ASCII_H
+
+
+;Get I
+SUB ASCII_I
+JZERO KeyI
+ADD   ASCII_I
+
+
+;Get J
+SUB ASCII_J
+JZERO KeyJ
+ADD   ASCII_J
 
 ;no valid input
 LOADI	0
@@ -419,6 +618,18 @@ RETI
 
 KeyH:
 LOADI	8
+STORE	Opcode
+OUT	SSEG2
+RETI
+
+KeyI:
+LOADI	9
+STORE	Opcode
+OUT	SSEG2
+RETI
+
+KeyJ:
+LOADI	10
 STORE	Opcode
 OUT	SSEG2
 RETI

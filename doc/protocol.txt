@@ -43,3 +43,82 @@ Opcodes:
 |getOdometerTh |&H4a |'J'  |16-ignored       |odometer theta |
 |              |     |     |                 |value          |
 +--------------+-----+-----+-----------------+---------------+
+
+A:
+LOAD UARTWordIn
+JZERO Son0
+ADDI -1
+JZERO Son1
+ADDI -1
+JZERO Son2
+ADDI -1
+JZERO Son3
+ADDI -1
+JZERO Son4
+ADDI -1
+JZERO Son5
+ADDI -1
+JZERO Son6
+ADDI -1
+JZERO Son7
+
+LOADI 0
+STORE UARTWordOut
+CALL UARTout
+
+Son0: IN DIST0
+JUMP SonRet
+Son1: IN DIST1
+JUMP SonRet
+Son2: IN DIST2
+JUMP SonRet
+Son3: IN DIST3
+JUMP SonRet
+Son4: IN DIST4
+JUMP SonRet
+Son5: IN DIST5
+JUMP SonRet
+Son6: IN DIST6
+JUMP SonRet
+Son7: IN DIST7
+
+SonRet:
+STORE UARTWordOut
+CALL UARTout
+
+
+B:
+IN XPOS
+STORE UARTWordOut
+CALL UARTout
+
+C:
+IN YPOS
+STORE UARTWordOut
+CALL UARTout
+
+D:
+OUT RESETPOS
+LOADI 1
+STORE UARTWordOut
+CALL UARTout
+
+H:
+LOAD UARTWordIn
+OUT BEEP
+LOADI 1
+STORE UARTWordOut
+CALL UARTout
+
+I:
+LOAD UARTWord
+SHIFT -8
+OUT SONAREN
+LOADI 1
+STORE UARTWordOut
+CALL UARTout
+
+J:
+IN THETA
+STORE UARTWordOut
+CALL UARTout
