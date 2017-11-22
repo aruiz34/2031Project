@@ -34,22 +34,23 @@ const uint16_t MSB=0xff00;
 const uint16_t LSB=0x00ff;
 
 void setup() {
-  pinMode(rx,INPUT);
+	pinMode(rx,INPUT);
 	pinMode(tx,OUTPUT);
 	digitalWrite(tx,HIGH);
 	delay(2);
 	digitalWrite(13,HIGH); //turn on debugging LED
 
 	 delay(1000);
-   //setup serial - for debugging and testing implemented commands - remove later
-  Serial.begin(9600);  
-  
-  while (!Serial) {
-    ; // wait for serial port to connect. Needed for native USB port only
-  }
-   Serial.println("Arduino Started");
- SWread();
- Serial.println("Byte Recieved");
+	 //setup serial - for debugging and testing implemented commands - remove later
+	 Serial.begin(9600);
+
+	 // while (!Serial) {
+	 // 	 ; // wait for serial port to connect. Needed for native USB port only
+	 // }
+	 Serial.println("Arduino Started");
+	 SWread();
+	 Serial.println("Byte Recieved");
+	 beep(2,0x40);
 }
 
 void SWprint(byte data)
@@ -84,7 +85,7 @@ byte SWread()
 			val |= digitalRead(rx) << offset;
 		}
 		//wait for stop bit + extra
-		delayMicroseconds(bit9600Delay); 
+		delayMicroseconds(bit9600Delay);
 		delayMicroseconds(bit9600Delay);
 		return val;
 	}
@@ -93,7 +94,7 @@ byte SWread()
 uint16_t getRetVal(void){
 	uint16_t val=SWread()<<8;
 	val |= SWread();
-  //MSWread();
+	//MSWread();
 	return val;
 }
 
@@ -171,19 +172,31 @@ int convertAngle(int arg){
 	return (arg>180)  ? arg - 360 : arg;
 }
 void routine1(){	//clear baffle
-	sonarEnable(B5 | B0);
- Serial.println("in routine 1");
- Serial.println(getSonar(0));
-	while(1){
-    Serial.println(getSonar(0));
+	sonarEnable(B2 | B3);
+	Serial.println("in routine 1");
+	Serial.println(getSonar(0));
+	resetOdometer();
+	while((getSonar(3)>850) && (getSonar(3)>850)){
 		forward(350);
 		delay(50);
-    valueSonar = getSonar(0);
-    if (!((valueSonar < 1524) && (valueSonar < 30000))){
-      break;
-    }
-    Serial.println(valueSonar);
 	}
+	beep(2,0x40);
+	/*while(getOdometerX() < 1524){
+		forward(350);
+		delay(50);
+		}
+		beep(2,0x40);
+	while(1){
+	Serial.println(getSonar(0));
+		forward(350);
+		delay(50);
+		valueSonar = getSonar(0);
+		if (!((valueSonar < 1524) && (valueSonar < 30000))){
+			break;
+		}
+		beep(2,0x40);
+		Serial.println(valueSonar);
+	}*/
 	stop();
 	//turn off sonars to avoid future problems
 	sonarEnable(0);
@@ -191,15 +204,20 @@ void routine1(){	//clear baffle
 
 void routine2(){
 	resetOdometer();
-	while(getOdometerX() < 510){
+	turn(90);
+	delay(5000);
+	sonarEnable(B0);
+	resetOdometer();
+	while(getOdometerX() < 1530){
 		forward(350);
+		int d=getSonar(0);
+		if((d<3048)&&(d>915)) {beep(8,0x40);}
 		delay(50);
 	}
+	beep(2,0x40);
+	stop();
 	int originalTheta = convertAngle(getOdometerTh());
 	int currentTheta  = originalTheta;
-	turn(90);
-	delay(4000);
-
 }
 
 void routine3(){
@@ -216,10 +234,10 @@ void routine3(){
 
 void loop()
 {
-  
 	if(!started){
 		routine1();
-   Serial.println("im alive");
-	}	
+		routine2();
+		Serial.println("im alive");
+	}
 	started = 1;
 }
