@@ -1,17 +1,23 @@
+#define in2mm(inches) inches*25.4
+#define MIDDLESPEED 350
+#define turnFactor(angle) ((3*1000)/90)*angle
+
 #include <math.h>
 
+/*
 int getSonar(int sonarNumber);
 int getOdometer();
 void resetOdometer();
 void forward(int speed);
 void stop();
 void turn(int angle);
-void soundAlarm();
-void stopAlarm();
+void beep(int time, int freq);
+*/
 
+/*
 void sweepingSensorCheck(marginL,marginR)
 {
-  if (getSonar(0) < marginL – 6*25.4 || getSonar(5) < marginR – 6*25.4)
+  if (getSonar(0) < marginL – in2mm(6) || getSonar(5) < marginR – in2mm(6))
   {
     soundAlarm();
     delay(1000);
@@ -20,15 +26,15 @@ void sweepingSensorCheck(marginL,marginR)
     //Continue with movement path;
   }
 }
+*/
 
 int intruderCollisionSensorCheck()
 {
-  if (getSonar(2) < 6*25.4 || getSonar(3) < 6*25.4)
+  if (getSonar(2) < in2mm(6) || getSonar(3) < in2mm(6))
   {
     stop();
-    soundAlarm();
-    delay(1000);
-    stopAlarm();
+    beep(3, 0x40);
+    delay(500);
     delay(5000);
     intruderCollisionSensorCheck();//might implement differently
     return 1;
@@ -44,7 +50,7 @@ void motionSensorCheck()
   {
     firstArray[n] = getSonar(n);
   }
-  delay(1000);
+  delay(500);
   for(int n = 0; n < 8; n++)
   {
     secondArray[n] = getSonar(n);
@@ -52,260 +58,75 @@ void motionSensorCheck()
   for(int n = 0; n < 8; n++)
   {
     if (abs(firstArray[n] - secondArray[n]) < 6) {
-      soundAlarm();
-      delay(1000);
-      stopAlarm();
+      beep();
+      delay(5000);
       break;
     }
   }
 }
 
-
-int main()
+void step2and8()
 {
-  int slowSpeed = 100;
-  int middleSpeed = 350;
-  int x = getSonar(5);
-  int margin1k = (48-4)*25.4;
-  int margin1d = (237-8)*25.4-x;
-  int margin1j = (x);
-  int margin2a = (90)*25.4-x;
-  int margin2o = (30-4)*25.4;
-  int margin2g = (36-4)*25.4;
-  int margin3j = (96)*25.4+x;
-  int margin3l = (48-4)*25.4;
-  int margin3d = (191-8)*25.4-x;
-  int margin3b = (191+50-8)*25.4-x;
+  turn(90);
+  delay(turnFactor(90));
+}
 
-
-  while(1)
+void step3and7()
+{
+  resetOdometer();
+  sonarEnable(B2 | B3);
+  forward(MIDDLESPEED);
+  while(getOdometer() < in2mm(96)/1.05)
   {
-    resetOdometer();
+    if(intruderCollisionSensorCheck)
+    {
+      forward(MIDDLESPEED);
+    }
+  }
+  stop();
+  sonarEnable(0);
+}
+
+void step4and6()
+{
+  turn(-90);
+  delay(turnFactor(90));
+}
+
+void setup()
+{
+  resetOdometer();
     forward(middleSpeed);
-    while(getOdometer() < 56*25.4/1.05)
-    {//from start to top of T
-      sweepingSensorCheck(margin1k, margin1j);
+    while(getOdometer() < in2mm(90)/1.05)
+    {
       if(intruderCollisionSensorCheck)
       {
-        forward(middleSpeed);
+        forward(MIDDLESPEED);
       }
     }
-    while(getOdometer() < 64*25.4/1.05)
-    {//getting passed T head
-      sweepingSensorCheck(6*25.4, margin1j);
-      if(intruderCollisionSensorCheck)
-      {
-        forward(middleSpeed);
-      }
-    }
-    while(getOdometer() < 86*25.4/1.05)
-    {//from top of T to turning point
-      sweepingSensorCheck(margin1d, margin1j);
-      if(intruderCollisionSensorCheck)
-      {
-        forward(middleSpeed);
-      }
-    }
-    forward(slowSpeed);//slow down before stopping
-    while(getOdometer() < 90*25.4/1.05) { }
     stop();
+  turn(180);
+  delay(turnFactor(180));
+}
 
-    motionSensorCheck();
-    turn(-30);
-    motionSensorCheck();
-    turn(-30);
-    motionSensorCheck();
-    turn(-30);
-    motionSensorCheck();
-
-    resetOdometer();
-    forward(middleSpeed);
-    while(getOdometer() < 20*25.4/1.05)
-    {
-      sweepingSensorCheck(margin2a, margin2g);
-      if(intruderCollisionSensorCheck)
-      {
-        forward(middleSpeed);
-      }
-    }
-    while(getOdometer() < 76*25.4/1.05)
-    {
-      sweepingSensorCheck(margin2o, margin2g);
-      if(intruderCollisionSensorCheck)
-      {
-        forward(middleSpeed);
-      }
-    }
-    while(getOdometer() < 92*25.4/1.05)
-    {
-      sweepingSensorCheck(margin2a, margin2g);
-      if(intruderCollisionSensorCheck)
-      {
-        forward(middleSpeed);
-      }
-    }
-    forward(slowSpeed);
-    while(getOdometer() < 96*25.4/1.05) { }
-    stop();
-
-    motionSensorCheck();
-    turn(-30);
-    motionSensorCheck();
-    turn(-30);
-    motionSensorCheck();
-    turn(-30);
-    motionSensorCheck();
-
-    resetOdometer();
-    forward(middleSpeed);
-    while(getOdometer() < 26*25.4/1.05)
-    {
-      sweepingSensorCheck(margin3j, margin3d);
-      if(intruderCollisionSensorCheck)
-      {
-        forward(middleSpeed);
-      }
-    }
-    while(getOdometer() < 34*25.4/1.05)
-    {
-      sweepingSensorCheck(6*25.4, margin3d);
-      if(intruderCollisionSensorCheck)
-      {
-        forward(middleSpeed);
-      }
-    }
-    while(getOdometer() < 86*25.4/1.05)
-    {
-      sweepingSensorCheck(margin3l, margin3b);
-      if(intruderCollisionSensorCheck)
-      {
-        forward(middleSpeed);
-      }
-    }
-    forward(slowSpeed);
-    while(getOdometer() < 90*25.4/1.05) { }
-    stop();
-
-    motionSensorCheck();
-    turn(60);
-    motionSensorCheck();
-    turn(60);
-    motionSensorCheck();
-    turn(60);
-    motionSensorCheck();
-
-    resetOdometer();
-    forward(middleSpeed);
-    while(getOdometer() < 56*25.4/1.05)
-    {
-      sweepingSensorCheck(margin3b, margin3l);
-      if(intruderCollisionSensorCheck)
-      {
-        forward(middleSpeed);
-      }
-    }
-    while(getOdometer() < 64*25.4/1.05)
-    {
-      sweepingSensorCheck(margin3d, 6*25.4/1.05);
-      if(intruderCollisionSensorCheck)
-      {
-        forward(middleSpeed);
-      }
-    }
-    while(getOdometer() < 86*25.4/1.05)
-    {
-      sweepingSensorCheck(margin3d, margin3j);
-      if(intruderCollisionSensorCheck)
-      {
-        forward(middleSpeed);
-      }
-    }
-    forward(slowSpeed);
-    while(getOdometer() < 90*25.4/1.05) { }
-    stop();
-
-    motionSensorCheck();
-    turn(30);
-    motionSensorCheck();
-    turn(30);
-    motionSensorCheck();
-    turn(30);
-    motionSensorCheck();
-
-    resetOdometer();
-    forward(middleSpeed);
-    while(getOdometer() < 20*25.4/1.05)
-    {
-      sweepingSensorCheck(margin2g, margin2a);
-      if(intruderCollisionSensorCheck)
-      {
-        forward(middleSpeed);
-      }
-    }
-    while(getOdometer() < 76*25.4/1.05)
-    {
-      sweepingSensorCheck(margin2g, margin2o);
-      if(intruderCollisionSensorCheck)
-      {
-        forward(middleSpeed);
-      }
-    }
-    while(getOdometer() < 92*25.4/1.05)
-    {
-      sweepingSensorCheck(margin2g, margin2a);
-      if(intruderCollisionSensorCheck)
-      {
-        forward(middleSpeed);
-      }
-    }
-    forward(slowSpeed);
-    while(getOdometer() < 96*25.4/1.05) { }
-    stop();
-
-    motionSensorCheck();
-    turn(30);
-    motionSensorCheck();
-    turn(30);
-    motionSensorCheck();
-    turn(30);
-    motionSensorCheck();
-
-    resetOdometer();
-    forward(middleSpeed);
-    while(getOdometer() < 26*25.4/1.05)
-    {
-      sweepingSensorCheck(margin1j, margin1d);
-      if(intruderCollisionSensorCheck)
-      {
-        forward(middleSpeed);
-      }
-    }
-    while(getOdometer() < 34*25.4/1.05)
-    {
-      sweepingSensorCheck(margin1j, 6*25.4);
-      if(intruderCollisionSensorCheck)
-      {
-        forward(middleSpeed);
-      }
-    }
-    while(getOdometer() < 86*25.4/1.05)
-    {
-      sweepingSensorCheck(margin1j, margin1k);
-      if(intruderCollisionSensorCheck)
-      {
-        forward(middleSpeed);
-      }
-    }
-    forward(slowSpeed);
-    while(getOdometer() < 90*25.4/1.05) { }
-    stop();
-
-    motionSensorCheck();
-    turn(-60);
-    motionSensorCheck();
-    turn(-60);
-    motionSensorCheck();
-    turn(-60);
+void step1and5(int iterations)
+{
+  sonarEnable(0xFF);
+  for(int n = 0; n < iterations; n++)
+  {
     motionSensorCheck();
   }
+  sonarEnable(0);
+}
+
+void loop()
+{
+  step1and5(10);
+  step2and8();
+  step3and7();
+  step4and6();
+  step1and5();
+  step4and6();
+  step3and7();
+  step2and8();
 }
