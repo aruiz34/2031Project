@@ -2,45 +2,72 @@
 //Heather Dewey-Hagborg
 //http://www.arduino.cc
 
-#include <ctype.h>
-#include <stdint.h>
 #include "protocol.h"
 
-#define bit9600Delay 100
-#define halfBit9600Delay 50
-#define bit4800Delay 188
-#define halfBit4800Delay 94
-
-#define B0 0x01
-#define B1 0x02
-#define B2 0x04
-#define B3 0x08
-#define B4 0x10
-#define B5 0x20
-#define B6 0x40
-#define B7 0x80
 
 //#define byte uint8_t
 
-byte rx = 13;
-byte tx = 14;
 byte SWval;
 char testVal;
 char debug;
-bool started = 0;
 int valueSonar;
 
-const uint16_t MSB=0xff00;
-const uint16_t LSB=0x00ff;
 
+bool baffleffleCLeared = 0;
+
+int convertAngle(int arg){
+	return (arg>180)  ? arg - 360 : arg;
+}
+void approachBaffle(){	//goes to right edge of baffle
+	sonarEnable(B5 | B0);
+	Serial.println("in routine 1");
+	Serial.println(getSonar(0));
+
+	while(1){
+		Serial.println(getSonar(0));
+		forward(350);	
+		delay(50);
+
+		valueSonar = getSonar(0);
+		//We want to continue moving while sonar values are less than 1524
+		//We also don't wish to stop of we get an eroneous ping(ie continue moving)
+		//provided that incoming values are greater than 30000
+		//logic (!((valueSonar < 1524) && (valueSonar > 30000)))
+		if	(!((valueSonar < footToMil(5)) || (valueSonar > 30000))){
+			break;
+  
+		}
+		Serial.println(valueSonar);
+	}
+
+	stop();
+	//turn off sonars to avoid future problems
+	sonarEnable(0);
+}
+void clearBaffle(){
+	resetOdometer();
+	distanceForward(footToMil(2));
+	Serial.println("Moved Forward 2 feet");
+	//don't imagine we need this anymore - we just delay by three once we turn
+	//int originalTheta = convertAngle(getOdometerTh());
+	//int currentTheta  = originalTheta;
+	turn(90);
+	delay(turnFactor(90));
+  	Serial.println("Delay done - check if turn has comlpleted please.");
+	delay(5000);
+	
+
+
+}
 void setup() {
-  pinMode(rx,INPUT);
-	pinMode(tx,OUTPUT);
-	digitalWrite(tx,HIGH);
-	delay(2);
-	digitalWrite(13,HIGH); //turn on debugging LED
 
-	 delay(1000);
+  pinMode(rx,INPUT);
+  pinMode(tx,OUTPUT);
+  digitalWrite(tx,HIGH);
+  delay(2);
+  //digitalWrite(13,HIGH); //turn on debugging LED
+
+   delay(1000);
    //setup serial - for debugging and testing implemented commands - remove later
   Serial.begin(9600);  
   
@@ -52,164 +79,19 @@ void setup() {
  Serial.println("Byte Recieved");
 }
 
-void SWprint(byte data)
-{
-	byte mask;
-	//startbit
-	digitalWrite(tx,LOW);
-	delayMicroseconds(bit9600Delay);
-	for (mask = 0x01; mask>0; mask <<= 1) {
-		if (data & mask){ // choose bit
-			digitalWrite(tx,HIGH); // send 1
-		}
-		else{
-			digitalWrite(tx,LOW); // send 0
-		}
-		delayMicroseconds(bit9600Delay);
-	}
-	//stop bit
-	digitalWrite(tx, HIGH);
-	delayMicroseconds(bit9600Delay);
-}
-
-byte SWread()
-{
-	byte val = 0;
-	while (digitalRead(rx));
-	//wait for start bit
-	if (digitalRead(rx) == LOW) {
-		delayMicroseconds(halfBit9600Delay);
-		for (int offset = 0; offset < 8; offset++) {
-			delayMicroseconds(bit9600Delay);
-			val |= digitalRead(rx) << offset;
-		}
-		//wait for stop bit + extra
-		delayMicroseconds(bit9600Delay); 
-		delayMicroseconds(bit9600Delay);
-		return val;
-	}
-}
-
-uint16_t getRetVal(void){
-	uint16_t val=SWread()<<8;
-	val |= SWread();
-  //MSWread();
-	return val;
-}
-
-uint16_t getSonar(uint8_t snum){
-	SWprint(0x41);
-	SWprint(0x00);
-	SWprint(snum);
-	return getRetVal();
-}
-
-uint16_t getOdometerX(void){
-	SWprint(0x42);
-	SWprint(0x00);
-	SWprint(0x00);
-	return getRetVal();
-}
-
-uint16_t getOdometerY(void){
-	SWprint(0x43);
-	SWprint(0x00);
-	SWprint(0x00);
-	return getRetVal();
-}
-
-uint16_t resetOdometer(void){
-	SWprint(0x44);
-	SWprint(0x00);
-	SWprint(0x00);
-	return getRetVal();
-}
-
-uint16_t forward(uint16_t speed){
-	SWprint(0x45);
-	SWprint((speed & MSB)>>8);
-	SWprint(speed & LSB);
-	//
-	return getRetVal();
-}
-
-uint16_t turn(uint16_t angle){
-	SWprint(0x46);
-	SWprint((angle & MSB)>>8);
-	SWprint(angle & LSB);
-	return getRetVal();
-}
-
-uint16_t stop(void){
-	SWprint(0x47);
-	SWprint(0x00);
-	SWprint(0x00);
-	return getRetVal();
-}
-
-uint16_t beep(uint8_t len, uint8_t freq){
-	SWprint(0x48);
-	SWprint(len);
-	SWprint(freq);
-	return getRetVal();
-}
-
-uint16_t sonarEnable(uint8_t smask){
-	SWprint(0x49);
-	SWprint(0x00);
-	SWprint(smask);
-	return getRetVal();
-}
-
-uint16_t getOdometerTh(void){
-	SWprint(0x4a);
-	SWprint(0x00);
-	SWprint(0x00);
-	return getRetVal();
-}
-int convertAngle(int arg){
-	return (arg>180)  ? arg - 360 : arg;
-}
-void routine1(){	//clear baffle
-	sonarEnable(B5 | B0);
- Serial.println("in routine 1");
- Serial.println(getSonar(0));
-	while(1){
-    Serial.println(getSonar(0));
-		forward(350);	
-		delay(50);
-    valueSonar = getSonar(0);
-    if (!((valueSonar < 1524) && (valueSonar < 30000))){
-      break;
-      
-    }
-    Serial.println(valueSonar);
-	}
-	stop();
-	//turn off sonars to avoid future problems
-	sonarEnable(0);
-}
-void routine2(){
-	resetOdometer();
-	while(getOdometerX() < 510){
-		forward(350);
-		delay(50);
-	}
-	int originalTheta = convertAngle(getOdometerTh());
-	int currentTheta  = originalTheta;
-	turn(90);
-  delay(3000);
-	
-
-
-}
-
 void loop()
 {
-  
-	if(!started){
-		routine1();
-   Serial.println("im alive");
-	}	
-	started = 1;
+  	//First order of business is to clear the baffle
+	if(!baffleffleCLeared){
+		approachBaffle();
+		Serial.println("Baffle Edge Detected");
+		baffleffleCLeared = 1;
+		clearBaffle();
+		Serial.println("Baffle Cleared");	
+	}
+	distanceForward(footToMil(6));
+	turn(180);
+	distanceForward(footToMil(6));
+	turn(180);
+
 }
