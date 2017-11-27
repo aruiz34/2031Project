@@ -24,6 +24,7 @@ void approachBaffle(){	//goes to right edge of baffle
 	Serial.println(getSonar(0));
 
 	while(1){
+<<<<<<< HEAD:UART/Arduino_Source_Files/Arduino_Bootstrapper/Arduino_BootStrapper.ino
 		Serial.println(getSonar(0));
 		forward(350);	
 		delay(50);
@@ -38,13 +39,28 @@ void approachBaffle(){	//goes to right edge of baffle
   
 		}
 		Serial.println(valueSonar);
+=======
+    Serial.println(getSonar(0));
+		forward(350);
+		delay(50);
+    valueSonar = getSonar(0);
+    if (!((valueSonar < 1524) && (valueSonar < 30000))){
+      break;
+    }
+    Serial.println(valueSonar);
+>>>>>>> 82204bb20e4cfbbc11ea148673d02bfee057a7c4:UART/Arduino_Source_Files/Arduino_BootStrapper/Arduino_BootStrapper.ino
 	}
 
 	stop();
 	//turn off sonars to avoid future problems
 	sonarEnable(0);
 }
+<<<<<<< HEAD:UART/Arduino_Source_Files/Arduino_Bootstrapper/Arduino_BootStrapper.ino
 void clearBaffle(){
+=======
+
+void routine2(){
+>>>>>>> 82204bb20e4cfbbc11ea148673d02bfee057a7c4:UART/Arduino_Source_Files/Arduino_BootStrapper/Arduino_BootStrapper.ino
 	resetOdometer();
 	distanceForward(footToMil(2));
 	Serial.println("Moved Forward 2 feet");
@@ -52,12 +68,27 @@ void clearBaffle(){
 	//int originalTheta = convertAngle(getOdometerTh());
 	//int currentTheta  = originalTheta;
 	turn(90);
+<<<<<<< HEAD:UART/Arduino_Source_Files/Arduino_Bootstrapper/Arduino_BootStrapper.ino
 	delay(turnFactor(90));
   	Serial.println("Delay done - check if turn has comlpleted please.");
 	delay(5000);
 	
+=======
+	delay(4000);
+>>>>>>> 82204bb20e4cfbbc11ea148673d02bfee057a7c4:UART/Arduino_Source_Files/Arduino_BootStrapper/Arduino_BootStrapper.ino
 
+}
 
+void routine3(){
+	sonarEnable(B5 | B0);
+	resetOdometer();
+	while(getOdometerX() < 1530){
+		forward(350);
+		delay(50);
+	}
+	turn(180);
+	delay(4000);
+	sonarEnable(0);
 }
 void setup() {
 
