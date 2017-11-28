@@ -366,8 +366,8 @@ MoveForward:
 	STORE	Opcode
 
 	;Move Forward
-	LOADI  0
-	STORE  DTheta      ; Desired angle 0
+	;LOADI  0
+	;STORE  DTheta      ; Desired angle 0
 	LOAD   UARTWordIn	   ; Speed from UART
 	STORE  DVel        ; Desired forward velocity
 
